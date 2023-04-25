@@ -8,13 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -26,8 +20,8 @@ import kotlin.math.absoluteValue
 fun CollapsibleScaffold(
     state: ScrollState,
     modifier: Modifier = Modifier,
-    maxTopBarHeight: Dp? = null,
-    topBar: @Composable (maxHeight: MutableState<Dp>) -> Unit = {},
+    maxTopBarHeight: Dp = DEFAULT_MAX_HEIGHT,
+    topBar: @Composable () -> Unit = {},
     content: @Composable (insets: PaddingValues) -> Unit
 ) {
     CollapsibleScaffoldInternal(
@@ -43,8 +37,8 @@ fun CollapsibleScaffold(
 fun CollapsibleScaffold(
     state: LazyListState,
     modifier: Modifier = Modifier,
-    maxTopBarHeight: Dp? = null,
-    topBar: @Composable (maxHeight: MutableState<Dp>) -> Unit = {},
+    maxTopBarHeight: Dp = DEFAULT_MAX_HEIGHT,
+    topBar: @Composable () -> Unit = {},
     content: @Composable (insets: PaddingValues) -> Unit
 ) {
     CollapsibleScaffoldInternal(
@@ -60,12 +54,13 @@ fun CollapsibleScaffold(
 private fun CollapsibleScaffoldInternal(
     offsetState: State<Int>,
     modifier: Modifier = Modifier,
-    maxTopBarHeight: Dp?,
-    topBar: @Composable (maxTopBarHeight: MutableState<Dp>) -> Unit = {},
+    maxTopBarHeight: Dp = DEFAULT_MAX_HEIGHT,
+    topBar: @Composable () -> Unit = {},
     content: @Composable (insets: PaddingValues) -> Unit
 ) {
 
-    val maxHeight = remember { mutableStateOf(maxTopBarHeight ?: DEFAULT_MAX_HEIGHT) }
+    val maxHeight = LocalTopBarInfo.current
+    maxHeight.value = maxTopBarHeight
 
     Scaffold(modifier = modifier) { insets ->
         Box {
@@ -79,7 +74,7 @@ private fun CollapsibleScaffoldInternal(
                 LocalScrollOffset provides offsetState,
                 LocalInsets provides insets
             ) {
-                topBar(maxHeight)
+                topBar()
             }
         }
     }

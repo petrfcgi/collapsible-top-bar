@@ -22,10 +22,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -49,21 +46,21 @@ import java.lang.Float.max
 import kotlin.math.min
 import kotlin.math.pow
 
+internal val LocalTopBarInfo = compositionLocalOf { mutableStateOf(0.dp) }
+
 /**
  * Simplest form of TopBar, mostly predefined
  */
 @Composable
-fun CollapsibleTopAppBar(
+fun CollapsibleTopBar(
     modifier: Modifier = Modifier,
-    maxHeight: MutableState<Dp>,
     title: String? = null,
     label: String? = null,
     onBack: (() -> Unit) = { },
     actions: (@Composable RowScope.() -> Unit)? = null
 ) {
-    CollapsibleTopAppBar(
+    CollapsibleTopBar(
         modifier = modifier,
-        maxHeight = maxHeight,
         actions = actions,
         navigationIcon = { DefaultTopAppBarBackIcon(onBack) },
         labelContent = {
@@ -75,10 +72,9 @@ fun CollapsibleTopAppBar(
             )
         }
     ) {
-        DefaultCollapsibleTopAppBarTitle(
+        DefaultCollapsibleTopBarTitle(
             text = title,
             fraction = fraction,
-            maxHeight = maxHeight,
             modifier = modifier
                 .align(Alignment.CenterStart)
                 .padding(
@@ -94,17 +90,15 @@ fun CollapsibleTopAppBar(
  * TopBar with custom components and predefined back arrow
  */
 @Composable
-fun CollapsibleTopAppBar(
+fun CollapsibleTopBar(
     modifier: Modifier = Modifier,
-    maxHeight: MutableState<Dp>,
     onBack: (() -> Unit) = { },
     actions: (@Composable RowScope.() -> Unit)? = null,
     labelContent: @Composable CollapsibleTopBarScope.() -> Unit = {},
     content: (@Composable CollapsibleTopBarScope.() -> Unit) = { }
 ) {
-    CollapsibleTopAppBar(
+    CollapsibleTopBar(
         modifier = modifier,
-        maxHeight = maxHeight,
         labelContent = labelContent,
         actions = actions,
         content = content,
@@ -116,16 +110,14 @@ fun CollapsibleTopAppBar(
  *  Fully customisable TopBar
  */
 @Composable
-fun CollapsibleTopAppBar(
+fun CollapsibleTopBar(
     modifier: Modifier = Modifier,
-    maxHeight: MutableState<Dp>,
     actions: (@Composable RowScope.() -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
     labelContent: @Composable CollapsibleTopBarScope.() -> Unit = {},
     content: (@Composable CollapsibleTopBarScope.() -> Unit) = { }
 ) {
-    CollapsibleTopAppBarInternal(
-        maxHeight = remember { maxHeight },
+    CollapsibleTopBarInternal(
         modifier = modifier,
         scrollOffset = LocalScrollOffset.current.value,
         insets = LocalInsets.current,
@@ -137,11 +129,10 @@ fun CollapsibleTopAppBar(
 }
 
 @Composable
-private fun CollapsibleTopAppBarInternal(
+private fun CollapsibleTopBarInternal(
     scrollOffset: Int,
     insets: PaddingValues,
     modifier: Modifier = Modifier,
-    maxHeight: MutableState<Dp>,
     minHeight: Dp = DEFAULT_MIN_HEIGHT,
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
@@ -149,6 +140,7 @@ private fun CollapsibleTopAppBarInternal(
     titleContent: @Composable CollapsibleTopBarScope.() -> Unit
 ) {
     val density = LocalDensity.current
+    val currentHeight = LocalTopBarInfo.current
     val navIconSize = remember { mutableStateOf(IntSize.Zero) }
     val navTitleSize = remember { mutableStateOf(IntSize.Zero) }
     val isInitialized = remember { mutableStateOf(false) }
@@ -157,7 +149,7 @@ private fun CollapsibleTopAppBarInternal(
     val navTitleWidth = with(density) { navTitleSize.value.width.toDp() }
 
     // Height of title body when fully expanded
-    val bodyHeight = maxHeight.value - minHeight
+    val bodyHeight = currentHeight.value - minHeight
 
     // Fancy math to calculate fraction (0-1)
     val maxOffset = with(density) {
@@ -199,7 +191,7 @@ private fun CollapsibleTopAppBarInternal(
                 .onGloballyPositioned {
                     if (!isInitialized.value) {
                         isInitialized.value = true
-                        maxHeight.value =
+                        currentHeight.value =
                             with(density) { it.size.height.toDp() } + minHeight + TITLE_EXPANDED_VERTICAL_PADDING
                     }
                 }
@@ -291,10 +283,12 @@ private fun getFractionWithDelay(
 }
 
 @Composable
-fun DefaultCollapsibleTopAppBarTitle(text: String?, fraction: Float, maxHeight: MutableState<Dp>, modifier: Modifier = Modifier) {
+fun DefaultCollapsibleTopBarTitle(text: String?, fraction: Float, modifier: Modifier = Modifier) {
+    val height = LocalTopBarInfo.current
+
     Text(
         text = text ?: "",
-        modifier = modifier.heightIn(max = maxHeight.value - DEFAULT_MIN_HEIGHT + TITLE_EXPANDED_VERTICAL_PADDING), // TODO Replace constant
+        modifier = modifier.heightIn(max = height.value - DEFAULT_MIN_HEIGHT + TITLE_EXPANDED_VERTICAL_PADDING), // TODO Replace constant
         fontSize = lerp(
             16.sp,
             24.sp,
