@@ -1,0 +1,6 @@
+<resources>
+    <string name="lib_name">Collapsible Top Bar</string>
+
+    <!-- Content description -->
+    <string name="cd_go_back">Go back</string>
+</resources>
