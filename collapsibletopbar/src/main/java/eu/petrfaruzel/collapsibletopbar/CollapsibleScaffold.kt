@@ -11,23 +11,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import eu.petrfaruzel.collapsibletopbar.CollapsibleTopAppBarDefaults.DEFAULT_MAX_HEIGHT
 import kotlin.math.absoluteValue
 
 @Composable
 fun CollapsibleScaffold(
     state: ScrollState,
     modifier: Modifier = Modifier,
-    maxTopBarHeight: Dp = DEFAULT_MAX_HEIGHT,
     topBar: @Composable () -> Unit = {},
     content: @Composable (insets: PaddingValues) -> Unit
 ) {
     CollapsibleScaffoldInternal(
         offsetState = rememberOffsetScrollState(state),
         modifier = modifier,
-        maxTopBarHeight = maxTopBarHeight,
         topBar = topBar,
         content = content
     )
@@ -37,14 +33,12 @@ fun CollapsibleScaffold(
 fun CollapsibleScaffold(
     state: LazyListState,
     modifier: Modifier = Modifier,
-    maxTopBarHeight: Dp = DEFAULT_MAX_HEIGHT,
     topBar: @Composable () -> Unit = {},
     content: @Composable (insets: PaddingValues) -> Unit
 ) {
     CollapsibleScaffoldInternal(
         offsetState = rememberOffsetScrollState(state),
         modifier = modifier,
-        maxTopBarHeight = maxTopBarHeight,
         topBar = topBar,
         content = content
     )
@@ -54,19 +48,17 @@ fun CollapsibleScaffold(
 private fun CollapsibleScaffoldInternal(
     offsetState: State<Int>,
     modifier: Modifier = Modifier,
-    maxTopBarHeight: Dp = DEFAULT_MAX_HEIGHT,
     topBar: @Composable () -> Unit = {},
     content: @Composable (insets: PaddingValues) -> Unit
 ) {
 
-    val maxHeight = LocalTopBarInfo.current
-    maxHeight.value = maxTopBarHeight
+    val topBarInfo = LocalTopBarInfo.current
 
     Scaffold(modifier = modifier) { insets ->
         Box {
             content(
                 PaddingValues(
-                    top = maxHeight.value + 8.dp,
+                    top = topBarInfo.currentHeight.value + 8.dp,
                     bottom = 16.dp
                 )
             )

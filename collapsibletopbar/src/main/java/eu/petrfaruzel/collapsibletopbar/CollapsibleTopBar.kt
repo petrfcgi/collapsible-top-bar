@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import eu.petrfaruzel.collapsibletopbar.CollapsibleTopAppBarDefaults.DEFAULT_MAX_HEIGHT
 import eu.petrfaruzel.collapsibletopbar.CollapsibleTopAppBarDefaults.DEFAULT_MIN_HEIGHT
 import eu.petrfaruzel.collapsibletopbar.CollapsibleTopAppBarDefaults.LABEL_ALPHA_TRANSITION_DELAY
 import eu.petrfaruzel.collapsibletopbar.CollapsibleTopAppBarDefaults.TITLE_EXPANDED_VERTICAL_PADDING
@@ -46,7 +47,13 @@ import java.lang.Float.max
 import kotlin.math.min
 import kotlin.math.pow
 
-internal val LocalTopBarInfo = compositionLocalOf { mutableStateOf(0.dp) }
+internal data class TopBarState(
+    val maxHeight: MutableState<Dp> = mutableStateOf(0.dp),
+    val minHeight: MutableState<Dp> = mutableStateOf(0.dp),
+    val currentHeight: MutableState<Dp> = mutableStateOf(0.dp)
+)
+
+internal val LocalTopBarInfo = compositionLocalOf { TopBarState() }
 
 /**
  * Simplest form of TopBar, mostly predefined
@@ -56,12 +63,16 @@ fun CollapsibleTopBar(
     modifier: Modifier = Modifier,
     title: String? = null,
     label: String? = null,
+    minHeight: Dp = DEFAULT_MIN_HEIGHT,
+    maxHeight: Dp = DEFAULT_MAX_HEIGHT,
     onBack: (() -> Unit) = { },
     actions: (@Composable RowScope.() -> Unit)? = null
 ) {
     CollapsibleTopBar(
         modifier = modifier,
         actions = actions,
+        minHeight = minHeight,
+        maxHeight = maxHeight,
         navigationIcon = { DefaultTopAppBarBackIcon(onBack) },
         labelContent = {
             DefaultTopAppBarLabel(
@@ -93,12 +104,16 @@ fun CollapsibleTopBar(
 fun CollapsibleTopBar(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit) = { },
+    minHeight: Dp = DEFAULT_MIN_HEIGHT,
+    maxHeight: Dp = DEFAULT_MAX_HEIGHT,
     actions: (@Composable RowScope.() -> Unit)? = null,
     labelContent: @Composable CollapsibleTopBarScope.() -> Unit = {},
     content: (@Composable CollapsibleTopBarScope.() -> Unit) = { }
 ) {
     CollapsibleTopBar(
         modifier = modifier,
+        minHeight = minHeight,
+        maxHeight = maxHeight,
         labelContent = labelContent,
         actions = actions,
         content = content,
@@ -112,6 +127,8 @@ fun CollapsibleTopBar(
 @Composable
 fun CollapsibleTopBar(
     modifier: Modifier = Modifier,
+    minHeight: Dp = DEFAULT_MIN_HEIGHT,
+    maxHeight: Dp = DEFAULT_MAX_HEIGHT,
     actions: (@Composable RowScope.() -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
     labelContent: @Composable CollapsibleTopBarScope.() -> Unit = {},
@@ -121,6 +138,8 @@ fun CollapsibleTopBar(
         modifier = modifier,
         scrollOffset = LocalScrollOffset.current.value,
         insets = LocalInsets.current,
+        minHeight = minHeight,
+        maxHeight = maxHeight,
         navigationIcon = navigationIcon,
         actions = actions,
         labelContent = labelContent,
@@ -128,19 +147,23 @@ fun CollapsibleTopBar(
     )
 }
 
+private fun getBodyHeight(topBarInfo: TopBarState) =
+    topBarInfo.maxHeight.value - topBarInfo.minHeight.value
+
 @Composable
 private fun CollapsibleTopBarInternal(
     scrollOffset: Int,
     insets: PaddingValues,
     modifier: Modifier = Modifier,
     minHeight: Dp = DEFAULT_MIN_HEIGHT,
+    maxHeight: Dp = DEFAULT_MAX_HEIGHT,
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
     labelContent: @Composable CollapsibleTopBarScope.() -> Unit,
     titleContent: @Composable CollapsibleTopBarScope.() -> Unit
 ) {
     val density = LocalDensity.current
-    val currentHeight = LocalTopBarInfo.current
+    val topBarInfo = LocalTopBarInfo.current
     val navIconSize = remember { mutableStateOf(IntSize.Zero) }
     val navTitleSize = remember { mutableStateOf(IntSize.Zero) }
     val isInitialized = remember { mutableStateOf(false) }
@@ -148,12 +171,13 @@ private fun CollapsibleTopBarInternal(
     val navIconWidth = with(density) { navIconSize.value.width.toDp() }
     val navTitleWidth = with(density) { navTitleSize.value.width.toDp() }
 
-    // Height of title body when fully expanded
-    val bodyHeight = currentHeight.value - minHeight
+    topBarInfo.maxHeight.value = maxHeight
+    topBarInfo.minHeight.value = minHeight
+
 
     // Fancy math to calculate fraction (0-1)
     val maxOffset = with(density) {
-        bodyHeight.roundToPx() - insets.calculateTopPadding().roundToPx()
+        getBodyHeight(topBarInfo).roundToPx() - insets.calculateTopPadding().roundToPx()
     }
 
     val offset = min(scrollOffset, maxOffset)
@@ -167,7 +191,7 @@ private fun CollapsibleTopBarInternal(
     BoxWithConstraints(
         modifier = modifier
             .background(Color.White)
-            .height(minHeight + bodyHeight * fraction)
+            .height(topBarInfo.minHeight.value + getBodyHeight(topBarInfo) * fraction)
     ) {
         val maxWidth = maxWidth
 
@@ -185,13 +209,13 @@ private fun CollapsibleTopBarInternal(
                 .heightIn(min = minHeight)
                 .offset(
                     x = navIconWidth - (navIconWidth * fraction),
-                    y = ((minHeight - TITLE_EXPANDED_VERTICAL_PADDING / 2) * fraction)
+                    y = ((minHeight - TITLE_EXPANDED_VERTICAL_PADDING) * fraction)
                 )
                 .width(titleWidth)
                 .onGloballyPositioned {
                     if (!isInitialized.value) {
                         isInitialized.value = true
-                        currentHeight.value =
+                        topBarInfo.currentHeight.value =
                             with(density) { it.size.height.toDp() } + minHeight + TITLE_EXPANDED_VERTICAL_PADDING
                     }
                 }
@@ -284,11 +308,11 @@ private fun getFractionWithDelay(
 
 @Composable
 fun DefaultCollapsibleTopBarTitle(text: String?, fraction: Float, modifier: Modifier = Modifier) {
-    val height = LocalTopBarInfo.current
+    val topBarInfo = LocalTopBarInfo.current
 
     Text(
         text = text ?: "",
-        modifier = modifier.heightIn(max = height.value - DEFAULT_MIN_HEIGHT + TITLE_EXPANDED_VERTICAL_PADDING), // TODO Replace constant
+        modifier = modifier.heightIn(max = topBarInfo.currentHeight.value - (topBarInfo.minHeight.value + TITLE_EXPANDED_VERTICAL_PADDING)), // TODO Replace constant
         fontSize = lerp(
             16.sp,
             24.sp,

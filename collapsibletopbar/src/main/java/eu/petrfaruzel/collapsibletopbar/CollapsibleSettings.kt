@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 internal object CollapsibleTopAppBarDefaults {
     // Replicating the value in androidx.compose.material.AppBar.AppBarHeight which is private
     val DEFAULT_MIN_HEIGHT = 64.dp
-    val DEFAULT_MAX_HEIGHT = 180.dp
+    val DEFAULT_MAX_HEIGHT = 120.dp
 
     /**
      * Log intensity of title width scaling
